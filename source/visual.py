@@ -1,23 +1,65 @@
+import random
+import pygame
+import os
 from tkinter import *
-from tkinter import filedialog
-from PIL import Image, ImageTk, ImageEnhance
+from ttkthemes import ThemedStyle
+from PIL import Image, ImageTk, ImageDraw, ImageGrab, ImageEnhance
 
 last_x, last_y = None, None
 canvas = None
 drawing = True
-background_image = None
 drawing_color = "orange"
-erase_color = "#ebe6d8"
+user_drawings = []
+drawing_mask = None
+
+letter_to_audio = {
+    'A' : 'A.mp3',
+    'B' : 'B.mp3',
+    'C' : 'C.mp3',
+    'D' : 'D.mp3',
+    'E' : 'E.mp3',
+    'F' : 'F.mp3',
+    'G' : 'G.mp3',
+    'H' : 'H.mp3',
+    'I' : 'I.mp3',
+    'J' : 'J.mp3',
+    'K' : 'K.mp3',
+    'L' : 'L.mp3',
+    'M' : 'M.mp3',
+    'N' : 'N.mp3',
+    'O' : 'O.mp3',
+    'P' : 'P.mp3',
+    'Q' : 'Q.mp3',
+    'R' : 'R.mp3',
+    'S' : 'S.mp3',
+    'T' : 'T.mp3',
+    'U' : 'U.mp3',
+    'V' : 'V.mp3',
+    'W' : 'W.mp3',
+    'X' : 'X.mp3',
+    'Y' : 'Y.mp3',
+    'Z' : 'Z.mp3',
+    '0' : '1.mp3',
+    '1' : '1.mp3',
+    '2' : '2.mp3',
+    '3' : '3.mp3',
+    '4' : '4.mp3',
+    '5' : '5.mp3',
+    '6' : '6.mp3',
+    '7' : '7.mp3',
+    '8' : '8.mp3',
+    '9' : '9.mp3'
+}
+
+currently_displayed_letter = None
 
 def toggle_draw_mode():
     global drawing
     drawing = not drawing
     if drawing:
         draw_button.config(text="Draw Mode", bg="red")
-        erase_button.config(text="Erase Mode", bg="SystemButtonFace")
     else:
         draw_button.config(text="Draw Mode", bg="SystemButtonFace")
-        erase_button.config(text="Erase Mode", bg="red")
 
 def start_draw(event):
     global last_x, last_y
@@ -28,59 +70,121 @@ def draw(event):
     x, y = event.x, event.y
     if last_x is not None and last_y is not None and canvas is not None:
         if drawing:
-            canvas.create_line(last_x, last_y, x, y, fill=drawing_color, width=30)
-        else:
-            canvas.create_line(last_x, last_y, x, y, fill=erase_color, width=20)
+            line = canvas.create_line(last_x, last_y, x, y, fill=drawing_color, width=22)
+            user_drawings.append(line)
     last_x, last_y = x, y
 
 def erase_all():
     canvas.delete("all")
 
+def erase_user_drawings():
+    global user_drawings
+    for drawing_item in user_drawings:
+        canvas.delete(drawing_item)
+    user_drawings = []
+
+def create_drawing_mask():
+    global drawing_mask
+    drawing_mask = Image.new("L", (canvas.winfo_width(), canvas.winfo_height()))
+    draw = ImageDraw.Draw(drawing_mask)
+
+    for drawing_item in user_drawings:
+        coords = canvas.coords(drawing_item)
+        if coords and len(coords) == 4:
+            x0, y0, x1, y1 = coords
+            if x1 >= x0:
+                draw.rectangle([x0, y0, x1, y1], fill=255)
+
 def handle_key(event):
     if event.keysym == "e" or event.keysym == "E":
         erase_all()
+    if event.keysym == 'l' or event.keysym == 'L':
+        erase_user_drawings()
 
 def load_image():
-    global background_image
-    file_path = filedialog.askopenfilename(filetypes=[("PNG files", "*.png")])
-    if file_path:
-        image = Image.open(file_path)
-    alpha = 0.5
-    enhancer = ImageEnhance.Brightness(image)
-    background_image = ImageTk.PhotoImage(enhancer.enhance(alpha))
+    global drawing_mask, currently_displayed_letter
+    alphabet_selection = "/Users/maanitmalhan/Documents/Python/T.A.L.L/ref_pics" # Place to change files for background image (change as necessary)
+    letter_images = [f for f in os.listdir(alphabet_selection) if f.endswith(".png")]
+
+    chosen_letter = random.choice(letter_images)
+    currently_displayed_letter = chosen_letter[0]
+    letter_image = Image.open(os.path.join(alphabet_selection, chosen_letter))
+
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+
+    desired_width = 200 
+    desired_height = 200
+
+    letter_image = letter_image.resize((desired_width, desired_height))
+
+    x_position = (canvas_width - desired_width) // 2
+    y_position = (canvas_height - desired_height) // 2
+
+    drawing_mask = Image.new("L", (canvas_width, canvas_height), 0)
+    drawing_mask.paste(255, (x_position, y_position, x_position + desired_width, y_position + desired_height))
+
+    brightness_level = 1
+    enhancer = ImageEnhance.Brightness(letter_image)
+    letter_image = enhancer.enhance(brightness_level)
+
+    if letter_image.mode == "RGBA":
+        alpha = 100
+        r, g, b, a = letter_image.split()
+        a = a.point(lambda p: p * alpha / 255)
+        letter_image.putalpha(a)
+
+    background_image = ImageTk.PhotoImage(letter_image)
     canvas.create_image(0, 0, anchor=NW, image=background_image)
+    canvas.image = background_image
+
+    play_corresponding_audio()
+
+def play_corresponding_audio(): 
+    global currently_displayed_letter
+    if currently_displayed_letter:
+        audio_file = letter_to_audio.get(currently_displayed_letter.upper()) 
+        if audio_file:
+            audio_file_path = os.path.join("/Users/maanitmalhan/Documents/Python/T.A.L.L/audio", audio_file)
+            play_audio(audio_file_path)
 
 def submit():
-    global user_drawings
-    temp_image = Image.new("RGBA", (canvas.winfo_width(), canvas.winfo_height()))
+    global canvas
+    x0 = canvas_frame.winfo_rootx()
+    y0 = canvas_frame.winfo_rooty()
+    x1 = x0 + canvas_frame.winfo_reqwidth() + 225
+    y1 = y0 + canvas_frame.winfo_reqheight() + 165
 
-    if background_image:
-        temp_image.paste(background_image, (0,0))
+    canvas_image = ImageGrab.grab(bbox=(x0, y0, x1, y1))
+    canvas_image.save("canvas_snapshot.png") # Saved .png name
+    print("Canvas snapshot saved as 'canvas_snapshot.png'")
 
-    for drawing_item in user_drawings:
-        canvas_item = canvas.itemcget(drawing_item, "image")
-        if canvas_item:
-            item_image = ImageTk.getimage(canvas_item)
-            temp_image.paste(item_image, (0,0), item_image)
+def play_audio(audio_file_path):
+    pygame.mixer.music.load(audio_file_path)
+    pygame.mixer.music.play()
 
-    temp_image.save("traced_drawings.png")
-    print("Traced drawing saved as 'traced_drawings.png'")
+pygame.mixer.init()
+
 
 root = Tk()
-root.geometry("1200x800")
+root.geometry("800x600")
 root.title("Visual")
 
-canvas_frame = Frame(root, borderwidth=8, relief="solid")
+style = ThemedStyle()
+style.set_theme("plastik")
+
+canvas_frame = Frame(root, width=400, height=400, borderwidth=8, relief="solid")
 canvas_frame.grid(row=0, column=0, padx=10, pady=10)
 
-canvas = Canvas(canvas_frame, width=600, height=400, bg="#ebe6d8")
+canvas = Canvas(canvas_frame, bg="#ebe6d8")
 canvas.grid(row=0, column=0)
 
 draw_button = Button(root, text="Draw Mode", bg="red", command=toggle_draw_mode)
-draw_button.grid(row=1, column=0, padx=10, pady=10)
+draw_button.grid(row=1, column=0, padx=10, pady=5)
 
-erase_button = Button(root, text="Erase Mode", bg="SystemButtonFace", command=toggle_draw_mode)
-erase_button.grid(row=2, column=0, padx=10, pady=10)
+audio_button = Button(root, text="Play Audio", command=play_corresponding_audio)
+  # Path to audio file (specific audio file unlike background image file path)
+audio_button.grid(row=3, column=1, padx=10, pady=10)
 
 load_button = Button(root, text="Load Image", command=load_image)
 load_button.grid(row=3, column=0, padx=10, pady=10)

@@ -3,7 +3,7 @@ import numpy as np
 import pygame 
 
 def audioButton():
-    letter_image = ""
+    letter_image = "chosen_letter"
     if letter_image == "a":
         pygame.mixer.music.load("/Users/maanitmalhan/Documents/Python/TraceLang/audio/a.m4a")
         pygame.mixer.music.play()
