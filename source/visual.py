@@ -1,6 +1,11 @@
 import random
+import time
 import pygame
+import cv2 as cv
+import sys
+import numpy as np
 import os
+import pyautogui as pg
 from tkinter import *
 from ttkthemes import ThemedStyle
 from PIL import Image, ImageTk, ImageDraw, ImageGrab, ImageEnhance
@@ -148,6 +153,60 @@ def play_corresponding_audio():
             audio_file_path = os.path.join("/Users/maanitmalhan/Documents/Python/T.A.L.L/audio", audio_file)
             play_audio(audio_file_path)
 
+
+
+def play_audio(audio_file_path):
+    pygame.mixer.music.load(audio_file_path)
+    pygame.mixer.music.play()
+
+def captureImg():
+    cap = cv.VideoCapture(0) # Video Capture
+    cap.set(cv.CAP_PROP_FRAME_WIDTH,800) # Width
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT,800)  # Height
+
+    while True:
+        success, img = cap.read() # Read image from camera
+        cv.imshow("Result", img) # Show image
+        if cv.waitKey(1) & 0xFF == ord('q'): # Press q to exit
+            cv.imwrite("/Users/maanitmalhan/Desktop/tst.png", img) # Save image
+            break
+    
+    imager = cv.imread("/Users/maanitmalhan/Desktop/tst.png") # Read image
+    gray = cv.cvtColor(imager, cv.COLOR_BGR2GRAY)
+    
+    cv.imwrite("/Users/maanitmalhan/Desktop/tst.png", gray) # Save image
+    cap.release() # Release camera
+    cv.destroyAllWindows() # Destroy all windows    
+
+def checkTrace(traced_image_path = "canvas_snapshot.png", reference_image_path= currently_displayed_letter, threshold=0.9):
+    traced_image = cv.imread(traced_image_path, cv.IMREAD_GRAYSCALE)
+    reference_image = cv.imread(reference_image_path, cv.IMREAD_GRAYSCALE)
+
+    trace_edges = cv.Canny(traced_image, threshold1=50, threshold2=150)  
+    ref_edges = cv.Canny(reference_image, threshold1=50, threshold2=150)  
+    # Get the width and height of the reference image  
+    imgWidth = 248
+    imgHeight = 248
+
+    # Resize the traced image to the same size as the reference image
+    traced_image = cv.resize(trace_edges, (imgWidth, imgHeight))
+    reference_image = cv.resize(ref_edges, (imgWidth, imgHeight))
+
+    #cv.imwrite("/Users/maanitmalhan/Documents/Tra_Image.png", traced_image)
+    #cv.imwrite("/Users/maanitmalhan/Documents/Refece_Image.png", reference_image)
+    # Get the difference between the traced image and the reference image
+
+    result = cv.matchTemplate(traced_image, reference_image, cv.TM_CCOEFF_NORMED)
+
+    # Get the best match location
+    min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
+
+    # Determine if the traced image matches the reference
+    if max_val >= threshold:
+        return True
+    else:
+        return False
+
 def submit():
     global canvas
     x0 = canvas_frame.winfo_rootx()
@@ -155,13 +214,12 @@ def submit():
     x1 = x0 + canvas_frame.winfo_reqwidth() + 225
     y1 = y0 + canvas_frame.winfo_reqheight() + 165
 
-    canvas_image = ImageGrab.grab(bbox=(x0, y0, x1, y1))
-    canvas_image.save("canvas_snapshot.png") # Saved .png name
+
+    pg.screenshot("/Users/maanitmalhan/desktop")
+    
     print("Canvas snapshot saved as 'canvas_snapshot.png'")
 
-def play_audio(audio_file_path):
-    pygame.mixer.music.load(audio_file_path)
-    pygame.mixer.music.play()
+    #checkTrace()
 
 pygame.mixer.init()
 
