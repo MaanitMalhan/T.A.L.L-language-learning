@@ -1,5 +1,7 @@
 # T.A.L.L(Tracing assisted language learning)
 ![T.A.L.L logo](TALL_logo.png)
+
+
 Are you ready to take your child's language skills to the next level? Our AI-powered learning app, T.A.L.L, is here to help you unlock the power of communication.
 
 **Why is tracing helpful in retaining information?** 
